@@ -1,0 +1,58 @@
+#Usar composer para instalar a biblioteca
+
+composer require phpoffice/phpspreadsheet
+
+require 'vendor/autoload.php';
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
+function exportar_xlsx_sqlserver ($conn,$view,$diretorio,$nomeArquivo){
+    
+    $colunasExcel = array("A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","AA","AB","AC","AD","AE","AF","AG","AH","AI","AJ","AK","AL","AM","AN","AO","AP","AQ","AR","AS","AT","AU","AV","AW","AX","AY","AZ","BA","BB","BC","BD","BE","BF","BG","BH","BI","BJ","BK","BL","BM","BN","BO","BP","BQ","BR","BS","BT","BU","BV","BW","BX","BY","BZ");
+    
+    #--Query para selecinar nome das colunas
+    $queryColunas = "SELECT name FROM sys.columns WHERE object_id = object_id('$view')";
+    $nomeColunas = $conn->query($queryColunas);
+
+    #--Query para pegar os dados
+    $queryCorpo = "SELECT * FROM $view";
+    $corpo = $conn->query($queryCorpo);
+
+    #--Iniciando a biblioteca PhpOffice
+    $excel = new Spreadsheet();
+    $tabela = $excel->getActiveSheet();
+    
+    #--Gerar nome das colunas
+    $i = 0;
+    while ($nome = $nomeColunas->fetch()) {
+        
+        #--if para remover = do inicio de qualquer campo (Ferramenta considera inico com = como uma formula)
+        if(substr($nome[0],0,1) == '='){
+            $tabela->setCellValue($colunasExcel[$i].'1',substr($nome[0],0,1));
+        }else{
+            $tabela->setCellValue($colunasExcel[$i].'1',$nome[0]);
+        }
+        $i++;
+    }
+
+    #--Gerar tabela
+    $linha = 2;
+    while ($dado = $corpo->fetch()) {
+
+        for ($i = 0; $i < $corpo->columnCount(); $i++) {
+          
+            #--if para remover = do inicio de qualquer campo (Ferramenta considera inico com = como uma formula)
+            if(substr($dado[$i],0,1) == '='){
+              $tabela->setCellValue($colunasExcel[$i].$linha,substr($dado[$i],0,1));
+            }else{
+              $tabela->setCellValue($colunasExcel[$i].$linha,$dado[$i]);
+            }
+        }
+        $linha++;
+    }
+
+    #--Salvar aquivo
+    $writer = new Xlsx($excel);
+    $writer->save($diretorio.$nomeArquivo);
+
+}
